@@ -15,6 +15,27 @@
 </head>
 <body>
   <div id="chat-container"></div>
+  <div id="transcription"></div>
+
+  <script>
+    const socket = new WebSocket('ws://localhost:9001/transcribe');
+  
+    socket.addEventListener('open', () => {
+      console.log('WebSocket connection established');
+      // Start sending audio data if applicable
+    });
+  
+    socket.addEventListener('message', (event) => {
+      const transcribedText = event.data;
+      document.getElementById('transcription').textContent = transcribedText;
+      handleSubmit(transcribedText);
+    });
+  
+    socket.addEventListener('close', () => {
+      console.log('WebSocket connection closed');
+    });
+  </script>
+
   <script type="text/babel">
     const ChatComponent = () => {
         const [query, setQuery] = React.useState('');

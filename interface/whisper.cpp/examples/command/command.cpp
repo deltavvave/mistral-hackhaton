@@ -22,6 +22,11 @@
 #include <vector>
 #include <map>
 
+#include <uWebSockets/App.h>
+#include <uWebSockets/Hub.h>
+
+using namespace uWS;
+
 // command-line parameters
 struct whisper_params {
     int32_t n_threads  = std::min(4, (int32_t) std::thread::hardware_concurrency());
@@ -772,6 +777,34 @@ int main(int argc, char ** argv) {
             ret_val = process_general_transcription(ctx, audio, params);
         }
     }
+
+    // Set up WebSocket server
+    uWS::App().ws("/transcribe", {
+        // Handle new WebSocket connection
+        .open = [ctx](uWS::WebSocket<uWS::SERVER> * ws, uWS::HttpRequest req) {
+            // Start voice agent and transcribe audio
+            // ...
+
+            // Send transcribed text to the client
+            ws->send(transcribedText, uWS::OpCode::TEXT);
+        },
+        // Handle incoming messages (e.g., audio data)
+        .message = [ctx](uWS::WebSocket<uWS::SERVER> * ws, std::string_view message, uWS::OpCode opCode) {
+            // Process incoming audio data
+            // ...
+        },
+        // Handle connection close
+        .close = [ctx](uWS::WebSocket<uWS::SERVER> * ws, int code, std::string_view message) {
+            // Clean up resources
+            whisper_free(ctx);
+        }
+    }).listen(9001, [](auto * token) {
+        if (token) {
+            std::cout << "Listening on port 9001" << std::endl;
+        } else {
+            std::cerr << "Failed to listen on port 9001" << std::endl;
+        }
+    }).run();
 
     audio.pause();
 
