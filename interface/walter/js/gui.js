@@ -446,6 +446,7 @@ NGL.MenubarFileWidget = function (stage) {
       if (NGL.ScriptExtensions.includes(ext)) {
         stage.loadScript(file).then(callback)
       } else if (fileTypesOpen.includes(ext)) {
+        // stage.loadFile(file, { defaultRepresentation: true }).then(callback)
         stage.loadFile(file, { defaultRepresentation: true }).then(callback)
       } else {
         console.error('unknown filetype: ' + ext)
@@ -553,14 +554,8 @@ NGL.MenubarFileWidget = function (stage) {
   var createDivider = UI.MenubarHelper.createDivider
 
   var menuConfig = [
-    createOption('Open...', onOpenOptionClick),
+    createOption('OPEN', onOpenOptionClick),
     createInput('PDB', onPdbInputKeyDown),
-    createCheckbox('asTrajectory', false, onAsTrajectoryChange),
-    createCheckbox('firstModelOnly', false, onFirstModelOnlyChange),
-    createCheckbox('cAlphaOnly', false, onCAlphaOnlyChange),
-    createDivider(),
-    createOption('Screenshot', onScreenshotOptionClick, 'camera'),
-    createOption('Export image...', onExportImageOptionClick)
   ]
 
   if (NGL.ListingDatasource) {
@@ -647,21 +642,7 @@ NGL.MenubarViewWidget = function (stage, preferences) {
   var createDivider = UI.MenubarHelper.createDivider
 
   var menuConfig = [
-    createOption('Light theme', onLightThemeOptionClick),
-    createOption('Dark theme', onDarkThemeOptionClick),
-    createDivider(),
-    createOption('Perspective', onPerspectiveCameraOptionClick),
-    createOption('Orthographic', onOrthographicCameraOptionClick),
-    createOption('Stereo', onStereoCameraOptionClick),
-    createDivider(),
-    createOption('Full screen', onFullScreenOptionClick, 'expand'),
-    createOption('Center', onCenterOptionClick, 'bullseye'),
-    createDivider(),
     createOption('Toggle spin', onToggleSpinClick),
-    createOption('Toggle rock', onToggleRockClick),
-    createDivider(),
-    createOption('Get orientation', onGetOrientationClick),
-    createOption('Set orientation', onSetOrientationClick)
   ]
 
   var optionsPanel = UI.MenubarHelper.createOptionsPanel(menuConfig)
