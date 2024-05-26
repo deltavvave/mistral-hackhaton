@@ -14,7 +14,7 @@
   <!-- <link rel="icon" type="image/png" href="path/to/favicon.png"> -->
 </head>
 <body>
-  <div id="small-viewers" class="small-box">
+  <div id="small-viewers">
     <div id="viewer1" class="mini-viewer"></div>
     <div id="viewer2" class="mini-viewer"></div>
     <div id="viewer3" class="mini-viewer"></div>
@@ -80,14 +80,13 @@
           miniViewerIds.forEach(function(id) {
               var ministage = new NGL.Stage(id);
               window.miniStages.push(ministage);
-          // print dimensions for debug
+              
           miniViewerIds.forEach(function(id) {
               var elem = document.getElementById(id);
               console.log(id, 'Offset:', elem.offsetWidth, elem.offsetHeight);
           });
           });
 
-          // Function to handle file load events
           function onFileLoaded(file) {
               console.log('File loaded:', file);
               if (window.reactAppHandleFileLoad) {
@@ -177,85 +176,93 @@
         //     }
         // };
         ///test 2 //////
-        console.log("miniStages length:", window.miniStages.length);
-        console.log("Current viewer index:", window.currentViewerIndex);
-        const loadLocalFile = () => {
-            const localFilePath = './sdf_model.sdf';
-            console.log('Attempting to load local file:', localFilePath);
-            if (window.loadFileIntoMiniViewer && window.determineViewerIndex) {
-                const viewerIndex = window.determineViewerIndex(); // Get the next viewer index
-                window.loadFileIntoMiniViewer(localFilePath, viewerIndex);
-            } else {
-                console.error('loadFileIntoMiniViewer or determineViewerIndex function is not defined');
-            }
-        };
-        React.useEffect(() => {
-            loadLocalFile(); 
-        }, []);
-
-        // Function to handle file loading
-        // const handleFileLoad = (pdbfile) => {
-        //     setCurrentFile(pdbfile);  
-        //     const viewerIndex = determineViewerIndex(); // Implement this function to decide which viewer to use
-        //     if (window.loadFileIntoMiniViewer) {
-        //         window.loadFileIntoMiniViewer(pdbfile, viewerIndex);
+        // console.log("miniStages length:", window.miniStages.length);
+        // console.log("Current viewer index:", window.currentViewerIndex);
+        // const loadLocalFile = () => {
+        //     const localFilePath = './test.sdf';
+        //     console.log('Attempting to load local file:', localFilePath);
+        //     if (window.loadFileIntoMiniViewer && window.determineViewerIndex) {
+        //         const viewerIndex = window.determineViewerIndex(); // Get the next viewer index
+        //         window.loadFileIntoMiniViewer(localFilePath, viewerIndex);
         //     } else {
-        //         console.error('loadFileIntoMiniViewer function is not defined');
+        //         console.error('loadFileIntoMiniViewer or determineViewerIndex function is not defined');
         //     }
         // };
-        const handleFileLoad = (sdffile) => {
-            setCurrentFile(sdffile);  
-            if (window.loadFileIntoMiniViewer && window.determineViewerIndex) {
-                const viewerIndex = window.determineViewerIndex(); 
-                window.loadFileIntoMiniViewer(sdffile, viewerIndex);
+        // React.useEffect(() => {
+        //     loadLocalFile(); 
+        // }, []);
+        ////////////////////////////////////////////////////////////////////////
+
+        function handleFileLoad(fileUrl) {
+            const fileType = 'sdf'; // Specify the file type explicitly
+            if (window.miniStages && window.miniStages.length > 0) {
+                const viewerIndex = window.determineViewerIndex();
+                console.log(`Loading file into viewer index ${viewerIndex}`);
+                if (window.loadFileIntoMiniViewer) {
+                    window.loadFileIntoMiniViewer(fileUrl, viewerIndex);
+                } else {
+                    console.error('loadFileIntoMiniViewer function is not defined');
+                }
             } else {
-                console.error('loadFileIntoMiniViewer or determineViewerIndex function is not defined');
+                console.error('No viewer available or miniStages not defined.');
             }
-        };
+        }
 
         const handleSubmit = async (e) => {
             e.preventDefault();
-            const file = currentFile;  
-            console.log("current file in HANDLE:", file);
+            console.log("Sending query:", query);
+            
+            const formData = new FormData();
+            formData.append('prompt', query);
+            formData.append('max_tokens', 256);
+            formData.append('temperature', 1.0);
+            formData.append('file', currentFile);
 
             try {
-                updateChatMessages(query, true); 
-                setQuery(''); 
-
-                console.log('Sending query:', query);
                 const response = await fetch('http://51.159.183.152:8000/predict', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ 
-                      prompt: query, 
-                      max_tokens: 256, 
-                      temperature: 1.0, 
-                      file: file,
-                  })
+                    method: 'POST',
+                    body: formData
                 });
 
                 if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
+                    throw new Error(`HTTP error ${response.status}`);
                 }
+                
+              
+                const textResponse = await response.text();
+                console.log('Received response:', textResponse);
 
-                const data = await response.json();
-                if (data.response) {
-                    console.log('Received response:', data.response);
-                    updateChatMessages(data.response);
-                } else {
-                    console.error('Response key is missing in the data object');
-                }
-                // if (data.sdfFile) {                
-                //     handleFileLoad(data.sdfFile);  
-                // }
-                handleFileLoad('./sdf_model.sdf');  
+                const blob = new Blob([textResponse], {type: 'chemical/x-mdl-sdfile'});
+                const file = new File([textResponse], "loadedFile.sdf", {type: 'chemical/x-mdl-sdfile'});
+                const url = URL.createObjectURL(blob);
+                console.log('File URL:', url);
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const fileContent = event.target.result;
+                    console.log('Content of the .sdf file:', fileContent);
+                };
+
+                reader.onerror = function(event) {
+                    console.error('Error reading file:', event.target.error);
+                };
+
+                reader.readAsText(file);
+
+                handleFileLoad(file);
+
             } catch (error) {
                 console.error('Error:', error);
-                updateChatMessages(`Error: ${error.message}`);
             }
         };
+
+        function extractFileData(responseText) {
+            const base64Marker = responseText.lastIndexOf('base64,');
+            if (base64Marker !== -1) {
+                return atob(responseText.substring(base64Marker + 7));
+            }
+            return null;
+        }
 
         const updateChatMessages = (newMessage, isUser = false) => {
             setResult((prevResult) => {
@@ -295,60 +302,6 @@
 
     ReactDOM.render(<ChatComponent />, document.getElementById('chat-container'));
   </script>
-  
-  
-  <!-- <script>
-    NGL.cssDirectory = "css/"
-    NGL.documentationUrl = "../build/docs/"
-    NGL.examplesListUrl = "../build/scriptsList.json"
-    NGL.examplesScriptUrl = "./scripts/"
-
-    // Datasources
-    NGL.DatasourceRegistry.add("data", new NGL.StaticDatasource("../data/"))
-    var mdsrv = NGL.getQuery("mdsrv")
-    if (mdsrv) {
-      var mdsrvDatasource = new NGL.MdsrvDatasource(mdsrv)
-      NGL.DatasourceRegistry.add("file", mdsrvDatasource)
-      NGL.setListingDatasource(mdsrvDatasource)
-      NGL.setTrajectoryDatasource(mdsrvDatasource)
-    }
-
-    var stage
-    document.addEventListener("DOMContentLoaded", function () {
-      stage = new NGL.Stage()
-      NGL.StageWidget(stage)
-
-      var load = NGL.getQuery("load")
-      if (load) stage.loadFile(load, {defaultRepresentation: true})
-
-      var script = NGL.getQuery("script")
-      if (script) stage.loadScript("./scripts/" + script + ".js")
-
-      var struc = NGL.getQuery("struc")
-      var traj = NGL.getQuery("traj")
-      if (struc) {
-        stage.loadFile(struc, {
-          defaultRepresentation: true
-        }).then(function(o) {
-          if (traj) o.addTrajectory(traj)
-        })
-      }
-
-      // Expose the load file function globally
-      window.loadFileFromBackend = function(pdbfile) {
-        if (stage && pdbfile) {
-          stage.loadFile(pdbfile, {defaultRepresentation: true}).then(function(component) {
-            console.log('Backend file loaded successfully');
-          }).catch(function(error) {
-            console.error('Error loading backend file:', error);
-          });
-        }
-      };
-
-      // Example usage: Assuming you have a way to receive this path from the backend
-      // loadFileFromBackend(data.pdbPath);
-    })
-  </script> -->
 
 </body>
 </html>

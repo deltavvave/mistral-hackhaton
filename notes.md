@@ -20,3 +20,24 @@ CXXFLAGS = -I. -I./examples -O3 -DNDEBUG -std=c++17 -fPIC
           //     });
           //   }
           // }
+
+
+fastapi main endpoint (test, ip will change):
+
+curl -X POST "http://51.159.183.152:8000/predict" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "What is the capital of France?",
+  "max_tokens": 256,
+  "temperature": 1.0
+}'
+
+
+if (data.sdfFile) {                
+    handleFileLoad(data.sdfFile);  
+}
+
+curl -X POST "http://51.159.183.152:8000/predict" -F "testing" -F "max_tokens=256" -F "temperature=1.0" -F "file=@./5uak.pdb"
+
+
+
