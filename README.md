@@ -1,6 +1,15 @@
 # mistral-hackhaton
+a fine-tuned mistral as  operator of a chemcrow-based agent framework for medical chemists
+
+* 1 mistral 7b fine tune on molinstruction dataset
+* 1 mistral 7b fine tune on custom generated dataset on high quality chemical procedure instructions
 
 # interface
+
+interface lets user upload a drug target protein (for. ex. a pocket) or ligand
+user can add instruction in the chat and send to the agent
+mistral poered agent runs request through its toolkit
+returns text + edited .sdf ligand file
 
 ## boot
 
