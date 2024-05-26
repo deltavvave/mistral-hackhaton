@@ -11,17 +11,36 @@
   <link rel="stylesheet" href="css/main.css" />
   <link rel="subresource" href="css/light.css" />
   <link rel="subresource" href="css/dark.css" />
-  <link rel="icon" type="image/png" href="path/to/favicon.png">
+  <!-- <link rel="icon" type="image/png" href="path/to/favicon.png"> -->
 </head>
 <body>
+  <div id="small-viewers" class="small-box">
+    <div id="viewer1" class="mini-viewer"></div>
+    <div id="viewer2" class="mini-viewer"></div>
+    <div id="viewer3" class="mini-viewer"></div>
+    <div id="viewer4" class="mini-viewer"></div>
+  </div>
   <div id="chat-container"></div>
   <div id="transcription"></div>
+
+  <!-- NGL -->
+  <script src="../dist/ngl.js"></script>
+
+  <!-- UI -->
+  <script src="js/lib/signals.min.js"></script>
+  <script src="js/lib/tether.min.js"></script>
+  <script src="js/lib/colorpicker.min.js"></script>
+  <script src="js/ui/ui.js"></script>
+  <script src="js/ui/ui.extra.js"></script>
+  <script src="js/ui/ui.ngl.js"></script>
+  <script src="js/gui.js"></script>
 
   <script>
     const socket = new WebSocket('ws://localhost:9001/transcribe');
   
     socket.addEventListener('open', () => {
       console.log('WebSocket connection established');
+      socket.send('Test message');
       // Start sending audio data if applicable
     });
   
@@ -36,24 +55,185 @@
     });
   </script>
 
+  <!-- NGL Viewer setup -->
+  <script>
+      NGL.cssDirectory = "css/";
+      NGL.documentationUrl = "../build/docs/";
+      NGL.examplesListUrl = "../build/scriptsList.json";
+      NGL.examplesScriptUrl = "./scripts/";
+
+      // Datasources
+      NGL.DatasourceRegistry.add("data", new NGL.StaticDatasource("../data/"));
+      var mdsrv = NGL.getQuery("mdsrv");
+      if (mdsrv) {
+        var mdsrvDatasource = new NGL.MdsrvDatasource(mdsrv);
+        NGL.DatasourceRegistry.add("file", mdsrvDatasource);
+        NGL.setListingDatasource(mdsrvDatasource);
+        NGL.setTrajectoryDatasource(mdsrvDatasource);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+          var stage = new NGL.Stage('viewer-container');
+          NGL.StageWidget(stage);
+          window.miniStages = [];
+          var miniViewerIds = ['viewer1', 'viewer2', 'viewer3', 'viewer4'];
+          miniViewerIds.forEach(function(id) {
+              var ministage = new NGL.Stage(id);
+              window.miniStages.push(ministage);
+          // print dimensions for debug
+          miniViewerIds.forEach(function(id) {
+              var elem = document.getElementById(id);
+              console.log(id, 'Offset:', elem.offsetWidth, elem.offsetHeight);
+          });
+          });
+
+          // Function to handle file load events
+          function onFileLoaded(file) {
+              console.log('File loaded:', file);
+              if (window.reactAppHandleFileLoad) {
+                  window.reactAppHandleFileLoad(file);
+              }
+          }
+
+          // Override the default loadFile method to include the callback
+          const originalLoadFile = stage.loadFile.bind(stage);
+          stage.loadFile = function (file, params) {
+              return originalLoadFile(file, params).then(component => {
+                  onFileLoaded(file);  
+                  return component;
+              });
+          };
+
+          // Existing file loading setup...
+          var load = NGL.getQuery("load");
+          if (load) stage.loadFile(load, {defaultRepresentation: true});
+
+          var script = NGL.getQuery("script");
+          if (script) stage.loadScript("./scripts/" + script + ".js");
+
+          var struc = NGL.getQuery("struc");
+          var traj = NGL.getQuery("traj");
+          if (struc) {
+              stage.loadFile(struc, {
+                  defaultRepresentation: true
+              }).then(function(o) {
+                  if (traj) o.addTrajectory(traj);
+              });
+          }
+
+          window.currentViewerIndex = 0;
+          window.determineViewerIndex = function() {
+              const index = window.currentViewerIndex;
+              window.currentViewerIndex = (window.currentViewerIndex + 1) % window.miniStages.length; 
+              return index;
+          };
+
+          window.loadFileIntoMiniViewer = function(file, index) {
+              console.log("Index:", index, "Length of miniStages:", miniStages.length);
+              if (index < miniStages.length) {
+                  miniStages[index].loadFile(file, {defaultRepresentation: true});
+              } else {
+                  console.error('Invalid viewer index');
+              }
+          };
+          window.addEventListener('load', () => {
+              miniViewerIds.forEach(function(id) {
+                  var elem = document.getElementById(id);
+                  elem.style.display = 'block'; // Force reflow/repaint
+              });
+          });
+      });
+  </script>
+
   <script type="text/babel">
     const ChatComponent = () => {
         const [query, setQuery] = React.useState('');
         const [result, setResult] = React.useState('');
+        const [currentFile, setCurrentFile] = React.useState(null);  
+
+        // Expose the file handling function to the global scope
+        window.reactAppHandleFileLoad = (file) => {
+            console.log('React handling file load:', file);
+            setCurrentFile(file);
+        };
+
+        React.useEffect(() => {
+            return () => {
+                window.reactAppHandleFileLoad = null;  // Clean up the global function
+            };
+        }, []);
+
+        // TESTING ONLY //////////////////////////////////////////////////////
+        // Function to test loading a local file
+        // const loadLocalFile = () => {
+        //     // const localFilePath = './5uak.pdb';
+        //     const localFilePath = './sdf_model.sdf';
+        //     console.log('Attempting to load local file:', localFilePath);
+        //     const viewerIndex = determineViewerIndex(); // Implement this function to decide which viewer to use
+        //     if (window.loadFileIntoMiniViewer) {
+        //         window.loadFileIntoMiniViewer(localFilePath, viewerIndex);
+        //     } else {
+        //         console.error('loadFileIntoMiniViewer function is not defined');
+        //     }
+        // };
+        ///test 2 //////
+        console.log("miniStages length:", window.miniStages.length);
+        console.log("Current viewer index:", window.currentViewerIndex);
+        const loadLocalFile = () => {
+            const localFilePath = './sdf_model.sdf';
+            console.log('Attempting to load local file:', localFilePath);
+            if (window.loadFileIntoMiniViewer && window.determineViewerIndex) {
+                const viewerIndex = window.determineViewerIndex(); // Get the next viewer index
+                window.loadFileIntoMiniViewer(localFilePath, viewerIndex);
+            } else {
+                console.error('loadFileIntoMiniViewer or determineViewerIndex function is not defined');
+            }
+        };
+        React.useEffect(() => {
+            loadLocalFile(); 
+        }, []);
+
+        // Function to handle file loading
+        // const handleFileLoad = (pdbfile) => {
+        //     setCurrentFile(pdbfile);  
+        //     const viewerIndex = determineViewerIndex(); // Implement this function to decide which viewer to use
+        //     if (window.loadFileIntoMiniViewer) {
+        //         window.loadFileIntoMiniViewer(pdbfile, viewerIndex);
+        //     } else {
+        //         console.error('loadFileIntoMiniViewer function is not defined');
+        //     }
+        // };
+        const handleFileLoad = (sdffile) => {
+            setCurrentFile(sdffile);  
+            if (window.loadFileIntoMiniViewer && window.determineViewerIndex) {
+                const viewerIndex = window.determineViewerIndex(); 
+                window.loadFileIntoMiniViewer(sdffile, viewerIndex);
+            } else {
+                console.error('loadFileIntoMiniViewer or determineViewerIndex function is not defined');
+            }
+        };
 
         const handleSubmit = async (e) => {
             e.preventDefault();
+            const file = currentFile;  
+            console.log("current file in HANDLE:", file);
+
             try {
                 updateChatMessages(query, true); 
                 setQuery(''); 
 
                 console.log('Sending query:', query);
-                const response = await fetch('/api/query', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ query })
+                const response = await fetch('http://51.159.183.152:8000/predict', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ 
+                      prompt: query, 
+                      max_tokens: 256, 
+                      temperature: 1.0, 
+                      file: file,
+                  })
                 });
 
                 if (!response.ok) {
@@ -61,8 +241,16 @@
                 }
 
                 const data = await response.json();
-                console.log('Received response:', data);
-                updateChatMessages(data.result); 
+                if (data.response) {
+                    console.log('Received response:', data.response);
+                    updateChatMessages(data.response);
+                } else {
+                    console.error('Response key is missing in the data object');
+                }
+                // if (data.sdfFile) {                
+                //     handleFileLoad(data.sdfFile);  
+                // }
+                handleFileLoad('./sdf_model.sdf');  
             } catch (error) {
                 console.error('Error:', error);
                 updateChatMessages(`Error: ${error.message}`);
@@ -107,21 +295,9 @@
 
     ReactDOM.render(<ChatComponent />, document.getElementById('chat-container'));
   </script>
-
-  <!-- NGL -->
-  <script src="../dist/ngl.js"></script>
-
-  <!-- UI -->
-  <script src="js/lib/signals.min.js"></script>
-  <script src="js/lib/tether.min.js"></script>
-  <script src="js/lib/colorpicker.min.js"></script>
-  <script src="js/ui/ui.js"></script>
-  <script src="js/ui/ui.extra.js"></script>
-  <script src="js/ui/ui.ngl.js"></script>
-  <script src="js/gui.js"></script>
   
-  <!-- NGL Viewer setup -->
-  <script>
+  
+  <!-- <script>
     NGL.cssDirectory = "css/"
     NGL.documentationUrl = "../build/docs/"
     NGL.examplesListUrl = "../build/scriptsList.json"
@@ -157,7 +333,22 @@
           if (traj) o.addTrajectory(traj)
         })
       }
+
+      // Expose the load file function globally
+      window.loadFileFromBackend = function(pdbfile) {
+        if (stage && pdbfile) {
+          stage.loadFile(pdbfile, {defaultRepresentation: true}).then(function(component) {
+            console.log('Backend file loaded successfully');
+          }).catch(function(error) {
+            console.error('Error loading backend file:', error);
+          });
+        }
+      };
+
+      // Example usage: Assuming you have a way to receive this path from the backend
+      // loadFileFromBackend(data.pdbPath);
     })
-  </script>
+  </script> -->
+
 </body>
 </html>

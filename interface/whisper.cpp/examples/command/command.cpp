@@ -22,10 +22,10 @@
 #include <vector>
 #include <map>
 
-#include <uWebSockets/App.h>
-#include <uWebSockets/Hub.h>
+#include <drogon/drogon.h>
+#include <unordered_set>
 
-using namespace uWS;
+using namespace drogon;
 
 // command-line parameters
 struct whisper_params {
@@ -688,7 +688,52 @@ int process_general_transcription(struct whisper_context * ctx, audio_async & au
     return 0;
 }
 
+class WebSocketTranscriber : public drogon::WebSocketController<WebSocketTranscriber> {
+public:
+    WS_PATH_LIST_BEGIN
+    // Define the path for WebSocket connection
+    WS_PATH_ADD("/transcribe", "WebSocketTranscriberFilter");
+    WS_PATH_LIST_END
+
+    // Static set to keep track of all connections
+    static std::unordered_set<WebSocketConnectionPtr> connections;
+
+    // Handle new WebSocket connection
+    virtual void handleNewConnection(const HttpRequestPtr &req, const WebSocketConnectionPtr& wsConnPtr) override {
+        // Add new connection to the set
+        connections.insert(wsConnPtr);
+    }
+
+    // Handle message received
+    virtual void handleNewMessage(const WebSocketConnectionPtr& wsConnPtr, std::string &&message, const WebSocketMessageType &type) override {
+        // You can process incoming messages here if needed
+    }
+
+    // Handle connection closed
+    virtual void handleConnectionClosed(const WebSocketConnectionPtr& wsConnPtr) override {
+        // Remove connection from the set
+        connections.erase(wsConnPtr);
+    }
+
+    // Broadcast a message to all connected clients
+    static void broadcast(const std::string& message) {
+        for (const auto& conn : connections) {
+            if (conn->connected()) {
+                conn->send(message);
+            }
+        }
+    }
+};
+
+// Initialize the static member
+std::unordered_set<WebSocketConnectionPtr> WebSocketTranscriber::connections;
+
 int main(int argc, char ** argv) {
+    drogon::app().addListener("0.0.0.0", 9001);
+    app().registerController(new WebSocketTranscriber());
+    drogon::app().run();
+    return 0;
+
     whisper_params params;
 
     if (whisper_params_parse(argc, argv, params) == false) {
@@ -778,34 +823,7 @@ int main(int argc, char ** argv) {
         }
     }
 
-    // Set up WebSocket server
-    uWS::App().ws("/transcribe", {
-        // Handle new WebSocket connection
-        .open = [ctx](uWS::WebSocket<uWS::SERVER> * ws, uWS::HttpRequest req) {
-            // Start voice agent and transcribe audio
-            // ...
-
-            // Send transcribed text to the client
-            ws->send(transcribedText, uWS::OpCode::TEXT);
-        },
-        // Handle incoming messages (e.g., audio data)
-        .message = [ctx](uWS::WebSocket<uWS::SERVER> * ws, std::string_view message, uWS::OpCode opCode) {
-            // Process incoming audio data
-            // ...
-        },
-        // Handle connection close
-        .close = [ctx](uWS::WebSocket<uWS::SERVER> * ws, int code, std::string_view message) {
-            // Clean up resources
-            whisper_free(ctx);
-        }
-    }).listen(9001, [](auto * token) {
-        if (token) {
-            std::cout << "Listening on port 9001" << std::endl;
-        } else {
-            std::cerr << "Failed to listen on port 9001" << std::endl;
-        }
-    }).run();
-
+    WebSocketTranscriber::broadcast(ret_val);
     audio.pause();
 
     whisper_print_timings(ctx);

@@ -4,16 +4,23 @@
 
 ## boot
 
+add walter to path :
+
+```bash
+ln -s /absolute/path/to/mistral-hackhaton/walter.sh /usr/local/bin/walter
+chmod +x /usr/local/bin/walter
+```
+
 start : 
 
 ```bash
-$ ./walter.sh start
+walter start
 ```
 
 stop : 
 
 ```bash
-$ ./walter.sh stop
+walter stop
 ```
 
 ## boot (manual)
@@ -23,7 +30,7 @@ $ ./walter.sh stop
 start server in `/interface` :
 
 ```bash
-$ python -m http.server 8000
+python -m http.server 8000
 ```
 
 
@@ -59,13 +66,13 @@ large-v3-q5_0"
 run in `/interface/whisper.cpp` (example: download tiny model) : 
 
 ```bash
-$ bash ./models/download-ggml-model.sh tiny.en
+bash ./models/download-ggml-model.sh tiny.en
 ```
 
 
 whisper.cpp: run in `/interface/whisper.cpp` :
 
 ```bash
-$ ./command -m ./models/ggml-tiny.en.bin -t 4
+./command -m ./models/ggml-tiny.en.bin -t 4
 ```
 

@@ -464,7 +464,7 @@ input[type=range]:focus:after {
     height: 92%;
     background-color: #000000;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    z-index: 9999; /* WALTER ON TOP */
+    z-index: 9999;  /* WALTER ON TOP */
 }
       
 .chat-result {
@@ -518,4 +518,23 @@ input[type=range]:focus:after {
     border: 1px solid #5e5e5e;
     border-radius: 3px;
     cursor: pointer;
+}
+
+#small-viewers {
+    display: flex;
+    flex-direction: column;
+    width: 250px; 
+    height: 800%; 
+    position: relative;
+    top: 40px;
+}
+
+.mini-viewer {
+    width: 200px;  
+    height: 200px; 
+    display: block; 
+    visibility: visible;  
+    opacity: 1;
+    position: relative; 
+    z-index: 10; 
 }

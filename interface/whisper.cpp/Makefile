@@ -50,7 +50,8 @@ endif
 #
 
 CFLAGS   = -I.              -O3 -DNDEBUG -std=c11   -fPIC
-CXXFLAGS = -I. -I./examples -O3 -DNDEBUG -std=c++11 -fPIC
+# CXXFLAGS = -I. -I./examples -O3 -DNDEBUG -std=c++11 -fPIC
+CXXFLAGS = -I. -I./examples -O3 -DNDEBUG -std=c++17 -fPIC
 LDFLAGS  =
 
 ifdef MACOSX_DEPLOYMENT_TARGET

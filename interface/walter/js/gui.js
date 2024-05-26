@@ -361,7 +361,11 @@ NGL.ViewportWidget = function (stage) {
       if (NGL.ScriptExtensions.includes(ext)) {
         stage.loadScript(file).then(callback)
       } else if (fileTypesOpen.includes(ext)) {
-        stage.loadFile(file, { defaultRepresentation: true }).then(callback)
+        stage.loadFile(file, { defaultRepresentation: true }).then(function (o) {
+          o.addRepresentation('cartoon')
+          o.addRepresentation('rocket')
+          o.autoView()
+        })
       } else {
         console.error('unknown filetype: ' + ext)
         callback()
@@ -642,7 +646,7 @@ NGL.MenubarViewWidget = function (stage, preferences) {
   var createDivider = UI.MenubarHelper.createDivider
 
   var menuConfig = [
-    createOption('Toggle spin', onToggleSpinClick),
+    createOption('SPIN', onToggleSpinClick),
   ]
 
   var optionsPanel = UI.MenubarHelper.createOptionsPanel(menuConfig)
