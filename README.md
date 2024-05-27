@@ -8,7 +8,7 @@ a fine-tuned mistral as  operator of a chemcrow-based agent framework for medica
 
 interface lets user upload a drug target protein (for. ex. a pocket) or ligand
 user can add instruction in the chat and send to the agent
-mistral poered agent runs request through its toolkit
+mistral agent runs request through its toolkit
 returns text + edited .sdf ligand file
 
 ## boot

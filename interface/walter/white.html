@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>B R E A K I N G * β α ∆</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -11,9 +12,10 @@
   <link rel="stylesheet" href="css/main.css" />
   <link rel="subresource" href="css/light.css" />
   <link rel="subresource" href="css/dark.css" />
-  <!-- <link rel="icon" type="image/png" href="path/to/favicon.png"> -->
 </head>
+
 <body>
+  <!-- WALTER interface -->
   <div id="small-viewers">
     <div id="viewer1" class="mini-viewer"></div>
     <div id="viewer2" class="mini-viewer"></div>
@@ -26,7 +28,7 @@
   <!-- NGL -->
   <script src="../dist/ngl.js"></script>
 
-  <!-- UI -->
+  <!-- NGL UI components -->
   <script src="js/lib/signals.min.js"></script>
   <script src="js/lib/tether.min.js"></script>
   <script src="js/lib/colorpicker.min.js"></script>
@@ -34,26 +36,6 @@
   <script src="js/ui/ui.extra.js"></script>
   <script src="js/ui/ui.ngl.js"></script>
   <script src="js/gui.js"></script>
-
-  <script>
-    const socket = new WebSocket('ws://localhost:9001/transcribe');
-  
-    socket.addEventListener('open', () => {
-      console.log('WebSocket connection established');
-      socket.send('Test message');
-      // Start sending audio data if applicable
-    });
-  
-    socket.addEventListener('message', (event) => {
-      const transcribedText = event.data;
-      document.getElementById('transcription').textContent = transcribedText;
-      handleSubmit(transcribedText);
-    });
-  
-    socket.addEventListener('close', () => {
-      console.log('WebSocket connection closed');
-    });
-  </script>
 
   <!-- NGL Viewer setup -->
   <script>
@@ -75,6 +57,7 @@
       document.addEventListener("DOMContentLoaded", function () {
           var stage = new NGL.Stage('viewer-container');
           NGL.StageWidget(stage);
+
           window.miniStages = [];
           var miniViewerIds = ['viewer1', 'viewer2', 'viewer3', 'viewer4'];
           miniViewerIds.forEach(function(id) {
@@ -103,7 +86,6 @@
               });
           };
 
-          // Existing file loading setup...
           var load = NGL.getQuery("load");
           if (load) stage.loadFile(load, {defaultRepresentation: true});
 
@@ -144,13 +126,13 @@
       });
   </script>
 
+  <!-- REACT -->
   <script type="text/babel">
     const ChatComponent = () => {
         const [query, setQuery] = React.useState('');
         const [result, setResult] = React.useState('');
         const [currentFile, setCurrentFile] = React.useState(null);  
 
-        // Expose the file handling function to the global scope
         window.reactAppHandleFileLoad = (file) => {
             console.log('React handling file load:', file);
             setCurrentFile(file);
@@ -158,48 +140,35 @@
 
         React.useEffect(() => {
             return () => {
-                window.reactAppHandleFileLoad = null;  // Clean up the global function
+                window.reactAppHandleFileLoad = null;  // Clean up 
             };
         }, []);
 
-        // TESTING ONLY //////////////////////////////////////////////////////
-        // Function to test loading a local file
-        // const loadLocalFile = () => {
-        //     // const localFilePath = './5uak.pdb';
-        //     const localFilePath = './sdf_model.sdf';
-        //     console.log('Attempting to load local file:', localFilePath);
-        //     const viewerIndex = determineViewerIndex(); // Implement this function to decide which viewer to use
-        //     if (window.loadFileIntoMiniViewer) {
-        //         window.loadFileIntoMiniViewer(localFilePath, viewerIndex);
-        //     } else {
-        //         console.error('loadFileIntoMiniViewer function is not defined');
-        //     }
-        // };
-        ///test 2 //////
-        // console.log("miniStages length:", window.miniStages.length);
-        // console.log("Current viewer index:", window.currentViewerIndex);
-        // const loadLocalFile = () => {
-        //     const localFilePath = './test.sdf';
-        //     console.log('Attempting to load local file:', localFilePath);
-        //     if (window.loadFileIntoMiniViewer && window.determineViewerIndex) {
-        //         const viewerIndex = window.determineViewerIndex(); // Get the next viewer index
-        //         window.loadFileIntoMiniViewer(localFilePath, viewerIndex);
-        //     } else {
-        //         console.error('loadFileIntoMiniViewer or determineViewerIndex function is not defined');
-        //     }
-        // };
-        // React.useEffect(() => {
-        //     loadLocalFile(); 
-        // }, []);
-        ////////////////////////////////////////////////////////////////////////
+        /// WHISPER DROGON SERVER
+        const socket = new WebSocket('ws://localhost:9001/transcribe');
+  
+        socket.addEventListener('open', () => {
+          console.log('WebSocket connection established');
+          // socket.send('Hi');
+        });
+      
+        socket.addEventListener('message', (event) => {
+          const transcribedText = event.data;
+          document.getElementById('transcription').textContent = transcribedText;
+          handleSubmit(transcribedText);
+        });
+      
+        socket.addEventListener('close', () => {
+          console.log('WebSocket connection closed');
+        });
 
-        function handleFileLoad(fileUrl) {
-            const fileType = 'sdf'; // Specify the file type explicitly
+        function handleFileLoad(file) {
+            const fileType = 'sdf'; 
             if (window.miniStages && window.miniStages.length > 0) {
                 const viewerIndex = window.determineViewerIndex();
                 console.log(`Loading file into viewer index ${viewerIndex}`);
                 if (window.loadFileIntoMiniViewer) {
-                    window.loadFileIntoMiniViewer(fileUrl, viewerIndex);
+                    window.loadFileIntoMiniViewer(file, viewerIndex);
                 } else {
                     console.error('loadFileIntoMiniViewer function is not defined');
                 }
@@ -208,9 +177,19 @@
             }
         }
 
+        const updateChatMessages = (newMessage, isUser = false) => {
+            setResult((prevResult) => {
+                const timestamp = new Date().toLocaleTimeString();
+                const sender = isUser ? 'USER:' : 'WALTER:';
+                const message = `${timestamp} ${sender}: ${newMessage}`;
+                return `${prevResult}\n${message}`;
+            });
+         };
+
         const handleSubmit = async (e) => {
             e.preventDefault();
             console.log("Sending query:", query);
+            updateChatMessages(query, true);
             
             const formData = new FormData();
             formData.append('prompt', query);
@@ -227,26 +206,20 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error ${response.status}`);
                 }
-                
               
                 const textResponse = await response.text();
                 console.log('Received response:', textResponse);
 
-                const blob = new Blob([textResponse], {type: 'chemical/x-mdl-sdfile'});
                 const file = new File([textResponse], "loadedFile.sdf", {type: 'chemical/x-mdl-sdfile'});
-                const url = URL.createObjectURL(blob);
-                console.log('File URL:', url);
-
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     const fileContent = event.target.result;
+                    updateChatMessages(fileContent); 
                     console.log('Content of the .sdf file:', fileContent);
                 };
-
                 reader.onerror = function(event) {
                     console.error('Error reading file:', event.target.error);
                 };
-
                 reader.readAsText(file);
 
                 handleFileLoad(file);
@@ -255,23 +228,6 @@
                 console.error('Error:', error);
             }
         };
-
-        function extractFileData(responseText) {
-            const base64Marker = responseText.lastIndexOf('base64,');
-            if (base64Marker !== -1) {
-                return atob(responseText.substring(base64Marker + 7));
-            }
-            return null;
-        }
-
-        const updateChatMessages = (newMessage, isUser = false) => {
-            setResult((prevResult) => {
-                const timestamp = new Date().toLocaleTimeString();
-                const sender = isUser ? 'USER:' : 'WALTER:';
-                const message = `${timestamp} ${sender}: ${newMessage}`;
-                return `${prevResult}\n${message}`;
-            });
-            };
 
         return (
             <div className="chat-container">

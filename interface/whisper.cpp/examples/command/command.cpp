@@ -691,31 +691,22 @@ int process_general_transcription(struct whisper_context * ctx, audio_async & au
 class WebSocketTranscriber : public drogon::WebSocketController<WebSocketTranscriber> {
 public:
     WS_PATH_LIST_BEGIN
-    // Define the path for WebSocket connection
     WS_PATH_ADD("/transcribe", "WebSocketTranscriberFilter");
     WS_PATH_LIST_END
 
-    // Static set to keep track of all connections
     static std::unordered_set<WebSocketConnectionPtr> connections;
 
-    // Handle new WebSocket connection
     virtual void handleNewConnection(const HttpRequestPtr &req, const WebSocketConnectionPtr& wsConnPtr) override {
-        // Add new connection to the set
         connections.insert(wsConnPtr);
     }
 
-    // Handle message received
     virtual void handleNewMessage(const WebSocketConnectionPtr& wsConnPtr, std::string &&message, const WebSocketMessageType &type) override {
-        // You can process incoming messages here if needed
     }
 
-    // Handle connection closed
     virtual void handleConnectionClosed(const WebSocketConnectionPtr& wsConnPtr) override {
-        // Remove connection from the set
         connections.erase(wsConnPtr);
     }
 
-    // Broadcast a message to all connected clients
     static void broadcast(const std::string& message) {
         for (const auto& conn : connections) {
             if (conn->connected()) {
@@ -725,7 +716,6 @@ public:
     }
 };
 
-// Initialize the static member
 std::unordered_set<WebSocketConnectionPtr> WebSocketTranscriber::connections;
 
 int main(int argc, char ** argv) {
@@ -746,8 +736,6 @@ int main(int argc, char ** argv) {
         exit(0);
     }
 
-    // whisper init
-
     struct whisper_context_params cparams = whisper_context_default_params();
 
     cparams.use_gpu    = params.use_gpu;
@@ -755,7 +743,6 @@ int main(int argc, char ** argv) {
 
     struct whisper_context * ctx = whisper_init_from_file_with_params(params.model.c_str(), cparams);
 
-    // print some info about the processing
     {
         fprintf(stderr, "\n");
         if (!whisper_is_multilingual(ctx)) {
@@ -774,8 +761,6 @@ int main(int argc, char ** argv) {
 
         fprintf(stderr, "\n");
     }
-
-    // init audio
 
     audio_async audio(30*1000);
     if (!audio.init(params.capture_id, WHISPER_SAMPLE_RATE)) {
